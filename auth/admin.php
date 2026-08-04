@@ -104,9 +104,6 @@ $this_month_sales = (float)$pdo->query("
 
 $avg_order_value = $total_orders > 0 ? ($total_sales / $total_orders) : 0;
 
-$total_menu_items = (int)$pdo->query("SELECT COUNT(*) FROM menu_items")->fetchColumn();
-$total_categories = (int)$pdo->query("SELECT COUNT(*) FROM categories")->fetchColumn();
-
 // Monthly Revenues Breakdown
 $monthly_revenues = $pdo->query("
     SELECT 
@@ -120,7 +117,6 @@ $monthly_revenues = $pdo->query("
     ORDER BY ym DESC
 ")->fetchAll();
 
-// Maximum monthly revenue for chart percentage calculation
 $max_monthly_rev = 1;
 foreach ($monthly_revenues as $mr) {
     if ($mr['total_revenue'] > $max_monthly_rev) {
@@ -162,425 +158,145 @@ if (isset($_GET['edit_item_id'])) {
     $stmt->execute([$edit_id]);
     $edit_item = $stmt->fetch();
 }
+
+$page_title = "Admin Dashboard - Yum's berchg";
+require_once __DIR__ . '/../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ordering & Monthly Revenues Dashboard - Yum's berchg</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <style>
-        :root {
-            --bg: #f8fafc;
-            --sidebar-bg: #0f172a;
-            --card-bg: #ffffff;
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --success: #16a34a;
-            --success-bg: #dcfce7;
-            --danger: #dc2626;
-            --purple: #7c3aed;
-        }
 
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            color: var(--text-main);
-            margin: 0;
-            padding: 0;
-        }
-
-        /* Top Navigation Header */
-        header {
-            background: var(--sidebar-bg);
-            color: white;
-            padding: 16px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-        }
-        header h1 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-        }
-        .header-actions a {
-            color: #94a3b8;
-            text-decoration: none;
-            font-size: 14px;
-            transition: color 0.2s;
-        }
-        .header-actions a:hover {
-            color: white;
-        }
-        .user-badge {
-            background: #1e293b;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            color: #e2e8f0;
-            border: 1px solid #334155;
-        }
-        .btn-logout {
-            background: #ef4444;
-            color: white !important;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-weight: 600;
-        }
-        .btn-logout:hover {
-            background: #dc2626 !important;
-        }
-
-        .container {
-            max-width: 1240px;
-            margin: 30px auto;
-            padding: 0 20px;
-        }
-
-        /* Alerts */
-        .alert {
-            padding: 14px 18px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-        .alert-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-
-        .dashboard-header {
-            margin-bottom: 25px;
-        }
-        .dashboard-header h2 {
-            margin: 0 0 5px 0;
-            font-size: 24px;
-            color: #0f172a;
-        }
-        .dashboard-header p {
-            margin: 0;
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        /* Overview Metric Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 20px;
-            margin-bottom: 35px;
-        }
-        .stat-card {
-            background: var(--card-bg);
-            padding: 22px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .stat-card .label {
-            font-size: 12px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            font-weight: 700;
-        }
-        .stat-card .value {
-            font-size: 26px;
-            font-weight: 800;
-            margin-top: 10px;
-            color: var(--text-main);
-        }
-        .stat-card .subtext {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 5px;
-        }
-
-        /* Section Layouts */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            margin-bottom: 35px;
-        }
-        @media (max-width: 900px) {
-            .grid-2 { grid-template-columns: 1fr; }
-        }
-
-        .section-card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            padding: 25px;
-            margin-bottom: 35px;
-        }
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-        .section-header h3 {
-            margin: 0;
-            font-size: 18px;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* Visual Monthly Revenue Chart Bars */
-        .chart-container {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-            margin-top: 10px;
-        }
-        .chart-row {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .chart-meta {
-            display: flex;
-            justify-content: space-between;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        .chart-bar-bg {
-            background: #f1f5f9;
-            height: 22px;
-            border-radius: 6px;
-            overflow: hidden;
-            position: relative;
-        }
-        .chart-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
-            border-radius: 6px;
-            transition: width 0.5s ease-in-out;
-        }
-
-        /* Tables */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-        th {
-            background: #f1f5f9;
-            color: #475569;
-            font-weight: 600;
-        }
-        tr:hover td {
-            background: #f8fafc;
-        }
-
-        /* Forms */
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #475569;
-        }
-        input[type="text"], input[type="number"], select, textarea {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 14px;
-            background: #fff;
-        }
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-        }
-        .btn {
-            padding: 9px 16px;
-            border-radius: 6px;
-            border: none;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            transition: background 0.2s;
-        }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-hover); }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-danger:hover { background: #b91c1c; }
-        .btn-sm { padding: 5px 10px; font-size: 12px; }
-
-        .badge {
-            background: #e2e8f0;
-            color: #334155;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .order-details-box {
-            background: #f8fafc;
-            border-left: 3px solid var(--primary);
-            padding: 10px 15px;
-            margin-top: 8px;
-            font-size: 13px;
-        }
-    </style>
-</head>
-<body>
-
-    <header>
-        <h1>🛠️ Yum's berchg Admin Dashboard</h1>
-        <div class="header-actions">
-            <a href="../reports/index.php" style="background: #2563eb; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600;">📊 Sales Reports & PDF Export</a>
-            <a href="../user/index.php" target="_blank">🌐 Customer Storefront</a>
-            <span class="user-badge">Admin: <strong><?= htmlspecialchars($_SESSION['admin_username'] ?? $_SESSION['username']) ?></strong></span>
-            <a href="logout.php" class="btn-logout">Logout</a>
+<div class="container-fluid px-4">
+    <!-- Notification Banners -->
+    <?php if ($success_msg): ?>
+        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> <?= htmlspecialchars($success_msg) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-    </header>
-
-    <div class="container">
-
-        <!-- Notification Banners -->
-        <?php if ($success_msg): ?>
-            <div class="alert alert-success">✅ <?= htmlspecialchars($success_msg) ?></div>
-        <?php endif; ?>
-        <?php if ($error_msg): ?>
-            <div class="alert alert-danger">⚠️ <?= htmlspecialchars($error_msg) ?></div>
-        <?php endif; ?>
-
-        <div class="dashboard-header">
-            <h2>📊 Ordering Total & Monthly Revenue Dashboard</h2>
-            <p>Real-time order volume, sales breakdown, and performance analytics</p>
+    <?php endif; ?>
+    <?php if ($error_msg): ?>
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> <?= htmlspecialchars($error_msg) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
+    <?php endif; ?>
 
-        <!-- 1. KEY ANALYTICS KPI CARDS -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="label">Total Revenue</div>
-                <div class="value" style="color: var(--success);">₱<?= number_format($total_sales, 2) ?></div>
-                <div class="subtext">Lifetime gross sales</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">This Month's Revenue</div>
-                <div class="value" style="color: var(--primary);">₱<?= number_format($this_month_sales, 2) ?></div>
-                <div class="subtext"><?= date('F Y') ?> sales total</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Ordering Total</div>
-                <div class="value"><?= number_format($total_orders) ?></div>
-                <div class="subtext">Total customer orders</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">This Month's Orders</div>
-                <div class="value"><?= number_format($this_month_orders) ?></div>
-                <div class="subtext">Orders placed this month</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Avg Order Value (AOV)</div>
-                <div class="value" style="color: var(--purple);">₱<?= number_format($avg_order_value, 2) ?></div>
-                <div class="subtext">Revenue per order</div>
+    <!-- Dashboard Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">🛠️ Admin Dashboard</h2>
+            <p class="text-muted small mb-0">Manage food categories, menu items, customer orders, and revenue metrics.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="../reports/index.php" class="btn btn-primary rounded-pill shadow-sm">
+                <i class="bi bi-graph-up-arrow me-1"></i> Sales Reports & Export
+            </a>
+        </div>
+    </div>
+
+    <!-- 1. KEY ANALYTICS KPI CARDS -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3 mb-4">
+        <div class="col">
+            <div class="card kpi-card kpi-success shadow-sm h-100 p-3">
+                <div class="text-uppercase text-muted extra-small fw-bold">Total Revenue</div>
+                <div class="fs-3 fw-bold text-success my-1">₱<?= number_format($total_sales, 2) ?></div>
+                <div class="text-muted extra-small">Lifetime gross sales</div>
             </div>
         </div>
+        <div class="col">
+            <div class="card kpi-card shadow-sm h-100 p-3">
+                <div class="text-uppercase text-muted extra-small fw-bold">This Month's Sales</div>
+                <div class="fs-3 fw-bold text-primary my-1">₱<?= number_format($this_month_sales, 2) ?></div>
+                <div class="text-muted extra-small"><?= date('F Y') ?> sales total</div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card kpi-card kpi-info shadow-sm h-100 p-3">
+                <div class="text-uppercase text-muted extra-small fw-bold">Total Orders</div>
+                <div class="fs-3 fw-bold text-dark my-1"><?= number_format($total_orders) ?></div>
+                <div class="text-muted extra-small">Total customer orders</div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card kpi-card kpi-warning shadow-sm h-100 p-3">
+                <div class="text-uppercase text-muted extra-small fw-bold">This Month's Orders</div>
+                <div class="fs-3 fw-bold text-warning my-1"><?= number_format($this_month_orders) ?></div>
+                <div class="text-muted extra-small">Orders placed this month</div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card kpi-card kpi-purple shadow-sm h-100 p-3">
+                <div class="text-uppercase text-muted extra-small fw-bold">Avg Order Value</div>
+                <div class="fs-3 fw-bold text-purple my-1">₱<?= number_format($avg_order_value, 2) ?></div>
+                <div class="text-muted extra-small">Revenue per order</div>
+            </div>
+        </div>
+    </div>
 
-        <!-- 2. MONTHLY REVENUES BREAKDOWN & VISUAL CHART -->
-        <div class="grid-2">
-            <!-- Visual Monthly Bar Chart -->
-            <div class="section-card" style="margin-bottom:0;">
-                <div class="section-header">
-                    <h3>📈 Monthly Revenue Trends</h3>
-                </div>
+    <!-- 2. MONTHLY REVENUE CHARTS & BREAKDOWN -->
+    <div class="row g-4 mb-4">
+        <!-- Revenue Bar Progress Charts -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-4">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-bar-chart-line text-primary me-2"></i>Monthly Revenue Trends</h5>
                 <?php if (empty($monthly_revenues)): ?>
-                    <p style="color: var(--text-muted); text-align: center; padding: 20px;">No revenue data recorded yet.</p>
+                    <p class="text-muted text-center py-4">No monthly sales recorded yet.</p>
                 <?php else: ?>
-                    <div class="chart-container">
+                    <div class="d-flex flex-column gap-3">
                         <?php foreach ($monthly_revenues as $rev): ?>
                             <?php $percent = round(($rev['total_revenue'] / $max_monthly_rev) * 100); ?>
-                            <div class="chart-row">
-                                <div class="chart-meta">
+                            <div>
+                                <div class="d-flex justify-content-between small fw-bold mb-1">
                                     <span><?= htmlspecialchars($rev['month_name']) ?></span>
-                                    <span style="color: var(--success); font-weight:700;">₱<?= number_format($rev['total_revenue'], 2) ?> (<?= $rev['order_count'] ?> orders)</span>
+                                    <span class="text-success">₱<?= number_format($rev['total_revenue'], 2) ?> (<?= $rev['order_count'] ?> orders)</span>
                                 </div>
-                                <div class="chart-bar-bg">
-                                    <div class="chart-bar-fill" style="width: <?= max(5, $percent) ?>%;"></div>
+                                <div class="progress rounded-pill" style="height: 14px;">
+                                    <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: <?= max(5, $percent) ?>%;"></div>
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
             </div>
-
-            <!-- Detailed Monthly Revenue Table -->
-            <div class="section-card" style="margin-bottom:0;">
-                <div class="section-header">
-                    <h3>🗓️ Monthly Revenues Breakdown</h3>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Month / Year</th>
-                            <th>Orders</th>
-                            <th>Total Revenue</th>
-                            <th>Avg / Order</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($monthly_revenues)): ?>
-                            <tr><td colspan="4" style="text-align:center;">No monthly data available.</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($monthly_revenues as $rev): ?>
-                                <tr>
-                                    <td><strong><?= htmlspecialchars($rev['month_name']) ?></strong></td>
-                                    <td><span class="badge"><?= $rev['order_count'] ?> orders</span></td>
-                                    <td style="color: var(--success); font-weight: 700;">₱<?= number_format($rev['total_revenue'], 2) ?></td>
-                                    <td>₱<?= number_format($rev['avg_revenue'], 2) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
         </div>
 
-        <!-- 3. TOP SELLING FOOD ITEMS REVENUE -->
-        <div class="section-card">
-            <div class="section-header">
-                <h3>🏆 Top Revenue-Generating Menu Items</h3>
+        <!-- Detailed Monthly Table -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-4">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-calendar-check text-info me-2"></i>Monthly Breakdown Table</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Month / Year</th>
+                                <th>Orders</th>
+                                <th>Total Revenue</th>
+                                <th>Avg / Order</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($monthly_revenues)): ?>
+                                <tr><td colspan="4" class="text-center text-muted">No monthly data available.</td></tr>
+                            <?php else: ?>
+                                <?php foreach ($monthly_revenues as $rev): ?>
+                                    <tr>
+                                        <td class="fw-bold"><?= htmlspecialchars($rev['month_name']) ?></td>
+                                        <td><span class="badge bg-secondary rounded-pill"><?= $rev['order_count'] ?> orders</span></td>
+                                        <td class="text-success fw-bold">₱<?= number_format($rev['total_revenue'], 2) ?></td>
+                                        <td>₱<?= number_format($rev['avg_revenue'], 2) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <table>
-                <thead>
+        </div>
+    </div>
+
+    <!-- 3. TOP SELLING MENU ITEMS -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-trophy text-warning me-2"></i>Top Revenue-Generating Menu Items</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
                     <tr>
                         <th>Food Item</th>
                         <th>Category</th>
@@ -590,39 +306,39 @@ if (isset($_GET['edit_item_id'])) {
                 </thead>
                 <tbody>
                     <?php if (empty($top_items)): ?>
-                        <tr><td colspan="4" style="text-align:center;">No sales data available.</td></tr>
+                        <tr><td colspan="4" class="text-center text-muted">No sales data available.</td></tr>
                     <?php else: ?>
                         <?php foreach ($top_items as $item): ?>
                             <tr>
-                                <td><strong><?= htmlspecialchars($item['item_name']) ?></strong></td>
-                                <td><span class="badge"><?= htmlspecialchars($item['category_name']) ?></span></td>
-                                <td><strong><?= number_format($item['total_qty']) ?></strong> units</td>
-                                <td style="color: var(--success); font-weight: 700;">₱<?= number_format($item['total_revenue'], 2) ?></td>
+                                <td class="fw-bold"><?= htmlspecialchars($item['item_name']) ?></td>
+                                <td><span class="badge bg-dark rounded-pill"><?= htmlspecialchars($item['category_name']) ?></span></td>
+                                <td><strong><?= number_format($item['total_qty']) ?></strong> pcs</td>
+                                <td class="text-success fw-bold">₱<?= number_format($item['total_revenue'], 2) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
+    </div>
 
-        <!-- 4. ORDERS MANAGEMENT OVERVIEW -->
-        <div class="section-card">
-            <div class="section-header">
-                <h3>📦 Customer Orders Log</h3>
-            </div>
-            <?php if (empty($orders)): ?>
-                <p style="color: var(--text-muted); text-align: center; padding: 20px;">No customer orders placed yet.</p>
-            <?php else: ?>
-                <table>
-                    <thead>
+    <!-- 4. CUSTOMER ORDERS LOG -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-box-seam text-primary me-2"></i>Customer Orders Log</h5>
+        <?php if (empty($orders)): ?>
+            <p class="text-muted text-center py-3 mb-0">No customer orders placed yet.</p>
+        <?php else: ?>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
                             <th>Order #</th>
                             <th>Customer Info</th>
-                            <th>Delivery Address</th>
-                            <th>Total Amount</th>
+                            <th>Address</th>
+                            <th>Total Price</th>
                             <th>Date & Time</th>
                             <th>Items Purchased</th>
-                            <th>Action</th>
+                            <th class="text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -638,88 +354,92 @@ if (isset($_GET['edit_item_id'])) {
                             $order_items = $stmt_items->fetchAll();
                             ?>
                             <tr>
-                                <td><strong>#<?= $order['id'] ?></strong></td>
+                                <td class="fw-bold">#<?= $order['id'] ?></td>
                                 <td>
-                                    <strong><?= htmlspecialchars($order['customer_name']) ?></strong><br>
-                                    <span style="color: var(--text-muted); font-size: 12px;">📞 <?= htmlspecialchars($order['phone']) ?></span>
+                                    <span class="fw-bold text-dark"><?= htmlspecialchars($order['customer_name']) ?></span><br>
+                                    <span class="text-muted extra-small"><i class="bi bi-telephone me-1"></i><?= htmlspecialchars($order['phone']) ?></span>
                                 </td>
-                                <td style="max-width: 200px;"><?= htmlspecialchars($order['address']) ?></td>
-                                <td style="color: var(--success); font-weight: 700;">₱<?= number_format($order['total_price'], 2) ?></td>
-                                <td style="font-size: 12px; color: var(--text-muted);"><?= $order['created_at'] ?></td>
+                                <td class="small" style="max-width: 200px;"><?= htmlspecialchars($order['address']) ?></td>
+                                <td class="text-success fw-bold">₱<?= number_format($order['total_price'], 2) ?></td>
+                                <td class="text-muted extra-small"><?= $order['created_at'] ?></td>
                                 <td>
-                                    <div class="order-details-box">
+                                    <div class="order-items-badge-box">
                                         <?php foreach ($order_items as $oi): ?>
                                             <div>• <strong><?= htmlspecialchars($oi['item_name'] ?? 'Item Deleted') ?></strong> x <?= $oi['quantity'] ?> (₱<?= number_format($oi['price'], 2) ?>)</div>
                                         <?php endforeach; ?>
                                     </div>
                                 </td>
-                                <td>
-                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete Order #<?= $order['id'] ?>?');">
+                                <td class="text-end">
+                                    <form method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete Order #<?= $order['id'] ?>?');">
                                         <input type="hidden" name="action" value="delete_order">
                                         <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
-            <?php endif; ?>
-        </div>
+            </div>
+        <?php endif; ?>
+    </div>
 
-        <!-- 5. MENU & CATEGORIES MANAGEMENT SECTION -->
-        <div class="grid-2">
-
-            <!-- Category Management -->
-            <div class="section-card" style="margin-bottom:0;">
-                <div class="section-header">
-                    <h3>🏷️ Categories</h3>
-                </div>
+    <!-- 5. CATEGORIES & MENU ITEM MANAGEMENT SECTION -->
+    <div class="row g-4 mb-4">
+        <!-- Categories Management -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-tags text-primary me-2"></i>Categories</h5>
                 
-                <form method="POST" style="margin-bottom: 20px;">
+                <form method="POST" class="mb-4">
                     <input type="hidden" name="action" value="add_category">
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" name="category_name" placeholder="New Category Name..." required>
-                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">Add Category</button>
+                    <div class="input-group">
+                        <input type="text" name="category_name" class="form-control" placeholder="New Category Name..." required>
+                        <button type="submit" class="btn btn-primary fw-bold">Add Category</button>
                     </div>
                 </form>
 
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Category Name</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($categories)): ?>
-                            <tr><td colspan="3" style="text-align:center;">No categories found.</td></tr>
-                        <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Category Name</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                             <?php foreach ($categories as $cat): ?>
                                 <tr>
                                     <td>#<?= $cat['id'] ?></td>
-                                    <td><strong><?= htmlspecialchars($cat['name']) ?></strong></td>
-                                    <td>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Deleting category will also delete associated menu items. Continue?');">
+                                    <td class="fw-bold"><?= htmlspecialchars($cat['name']) ?></td>
+                                    <td class="text-end">
+                                        <form method="POST" class="d-inline" onsubmit="return confirm('Deleting category will also delete associated menu items. Continue?');">
                                             <input type="hidden" name="action" value="delete_category">
                                             <input type="hidden" name="category_id" value="<?= $cat['id'] ?>">
-                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">Delete</button>
                                         </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+        </div>
 
-            <!-- Add/Edit Menu Item Form -->
-            <div class="section-card" style="margin-bottom:0;">
-                <div class="section-header">
-                    <h3><?= $edit_item ? '✏️ Edit Menu Item' : '➕ Add Menu Item' ?></h3>
+        <!-- Add/Edit Menu Item Form -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-pencil-square text-success me-2"></i>
+                        <?= $edit_item ? 'Edit Menu Item' : 'Add New Menu Item' ?>
+                    </h5>
                     <?php if ($edit_item): ?>
-                        <a href="index.php" style="font-size: 13px; color: var(--primary); text-decoration: none;">Cancel Editing</a>
+                        <a href="admin.php" class="btn btn-sm btn-outline-secondary rounded-pill">Cancel Editing</a>
                     <?php endif; ?>
                 </div>
 
@@ -729,92 +449,91 @@ if (isset($_GET['edit_item_id'])) {
                         <input type="hidden" name="item_id" value="<?= $edit_item['id'] ?>">
                     <?php endif; ?>
 
-                    <div class="form-group">
-                        <label>Item Name</label>
-                        <input type="text" name="item_name" required placeholder="e.g. Bacon Cheeseburger" value="<?= htmlspecialchars($edit_item['name'] ?? '') ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Item Name</label>
+                        <input type="text" name="item_name" class="form-control" required placeholder="e.g. Bacon Cheeseburger" value="<?= htmlspecialchars($edit_item['name'] ?? '') ?>">
                     </div>
 
-                    <div class="form-group">
-                        <label>Category</label>
-                        <select name="category_id" required>
-                            <option value="">Select Category</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?= $cat['id'] ?>" <?= ($edit_item && $edit_item['category_id'] == $cat['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($cat['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Category</label>
+                            <select name="category_id" class="form-select" required>
+                                <option value="">Select Category</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?= $cat['id'] ?>" <?= ($edit_item && $edit_item['category_id'] == $cat['id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($cat['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Price (₱)</label>
+                            <input type="number" step="0.01" name="price" class="form-control" required placeholder="89.99" value="<?= htmlspecialchars($edit_item['price'] ?? '') ?>">
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Price (₱)</label>
-                        <input type="number" step="0.01" name="price" required placeholder="9.99" value="<?= htmlspecialchars($edit_item['price'] ?? '') ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Description</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Brief description of food item..."><?= htmlspecialchars($edit_item['description'] ?? '') ?></textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label>Description</label>
-                        <textarea name="description" rows="2" placeholder="Brief description of the item..."><?= htmlspecialchars($edit_item['description'] ?? '') ?></textarea>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">Image Path</label>
+                        <input type="text" name="image_url" class="form-control" placeholder="uploads/cheeseburger.png" value="<?= htmlspecialchars($edit_item['image_url'] ?? '') ?>">
                     </div>
 
-                    <div class="form-group">
-                        <label>Image URL</label>
-                        <input type="text" name="image_url" placeholder="uploads/cheeseburger.png" value="<?= htmlspecialchars($edit_item['image_url'] ?? '') ?>">
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-3 fw-bold">
                         <?= $edit_item ? 'Update Menu Item' : 'Save Menu Item' ?>
                     </button>
                 </form>
             </div>
-
         </div>
+    </div>
 
-        <!-- Menu Items List Section -->
-        <div class="section-card">
-            <div class="section-header">
-                <h3>🍔 Menu Items Catalog</h3>
-            </div>
-            <table>
-                <thead>
+    <!-- 6. MENU ITEMS CATALOG TABLE -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-5">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-menu-app text-dark me-2"></i>Menu Items Catalog</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
                     <tr>
                         <th>Image</th>
                         <th>Item</th>
                         <th>Category</th>
                         <th>Price</th>
                         <th>Description</th>
-                        <th>Actions</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (empty($menu_items)): ?>
-                        <tr><td colspan="6" style="text-align:center;">No menu items found.</td></tr>
-                    <?php else: ?>
-                        <?php foreach ($menu_items as $item): ?>
-                            <?php $img_path = !empty($item['image_url']) ? '../' . $item['image_url'] : '../uploads/default_food.png'; ?>
-                            <tr>
-                                <td>
-                                    <img src="<?= htmlspecialchars($img_path) ?>" alt="Food" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                </td>
-                                <td><strong><?= htmlspecialchars($item['name']) ?></strong></td>
-                                <td><span class="badge"><?= htmlspecialchars($item['category_name']) ?></span></td>
-                                <td style="color: var(--success); font-weight:700;">₱<?= number_format($item['price'], 2) ?></td>
-                                <td style="color: var(--text-muted); font-size:13px; max-width: 250px;"><?= htmlspecialchars($item['description']) ?></td>
-                                <td>
-                                    <a href="index.php?edit_item_id=<?= $item['id'] ?>" class="btn btn-primary btn-sm">Edit</a>
-                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete <?= htmlspecialchars($item['name']) ?>?');">
-                                        <input type="hidden" name="action" value="delete_menu_item">
-                                        <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
-                                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                    <?php foreach ($menu_items as $item): ?>
+                        <?php $img_path = !empty($item['image_url']) ? '../' . $item['image_url'] : '../uploads/default_food.png'; ?>
+                        <tr>
+                            <td>
+                                <img src="<?= htmlspecialchars($img_path) ?>" alt="Food" class="img-thumbnail rounded-3" style="width: 50px; height: 50px; object-fit: cover;">
+                            </td>
+                            <td class="fw-bold"><?= htmlspecialchars($item['name']) ?></td>
+                            <td><span class="badge bg-dark rounded-pill"><?= htmlspecialchars($item['category_name']) ?></span></td>
+                            <td class="text-success fw-bold">₱<?= number_format($item['price'], 2) ?></td>
+                            <td class="text-muted small" style="max-width: 250px;"><?= htmlspecialchars($item['description']) ?></td>
+                            <td class="text-end">
+                                <a href="admin.php?edit_item_id=<?= $item['id'] ?>" class="btn btn-outline-primary btn-sm rounded-pill me-1">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <form method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete <?= htmlspecialchars($item['name']) ?>?');">
+                                    <input type="hidden" name="action" value="delete_menu_item">
+                                    <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
-
     </div>
+</div>
 
-</body>
-</html>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
