@@ -49,146 +49,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$page_title = "Customer Registration - Yum's berchg";
+$hide_navbar = true;
+$body_class = 'auth-body';
+require_once __DIR__ . '/../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Registration - Yum's berchg</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-        .card {
-            background: white;
-            padding: 35px 30px;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
-            width: 100%;
-            max-width: 420px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .header h2 {
-            margin: 0 0 5px 0;
-            color: #0f172a;
-            font-size: 24px;
-        }
-        .header p {
-            margin: 0;
-            color: #64748b;
-            font-size: 14px;
-        }
-        .form-group {
-            margin-bottom: 16px;
-        }
-        label {
-            display: block;
-            margin-bottom: 6px;
-            color: #475569;
-            font-size: 13px;
-            font-weight: 600;
-        }
-        input[type="text"], input[type="email"], input[type="password"] {
-            width: 100%;
-            padding: 11px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        input:focus {
-            outline: none;
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-        }
-        .btn-submit {
-            width: 100%;
-            padding: 12px;
-            background: #10b981;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 5px;
-        }
-        .btn-submit:hover {
-            background: #059669;
-        }
-        .error {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-bottom: 18px;
-            text-align: center;
-        }
-        .footer-link {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
-            color: #64748b;
-        }
-        .footer-link a {
-            color: #2563eb;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .footer-link a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div class="header">
-            <h2>📝 Customer Registration</h2>
-            <p>Create your account to start ordering food</p>
-        </div>
 
-        <?php if ($error): ?>
-            <div class="error"><?= htmlspecialchars($error) ?></div>
-        <?php endif; ?>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 col-sm-10 col-md-8 col-lg-5 col-xl-4">
+            <!-- Bootstrap Registration Card -->
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="card-body p-4 p-sm-5">
+                    <!-- Header -->
+                    <div class="text-center mb-4">
+                        <span class="fs-1 d-block mb-1">📝</span>
+                        <h2 class="fw-bold text-dark mb-1">Create Account</h2>
+                        <p class="text-muted small">Join Yum's berchg to start ordering food online</p>
+                    </div>
 
-        <form method="POST" action="register.php">
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" name="username" required placeholder="Choose a username" value="<?= htmlspecialchars($username) ?>">
-            </div>
-            <div class="form-group">
-                <label>Email Address</label>
-                <input type="email" name="email" required placeholder="Enter your email" value="<?= htmlspecialchars($email) ?>">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" required placeholder="Create a password">
-            </div>
-            <div class="form-group">
-                <label>Confirm Password</label>
-                <input type="password" name="confirm_password" required placeholder="Repeat password">
-            </div>
-            <button type="submit" class="btn-submit">Complete Registration</button>
-        </form>
+                    <!-- Alert -->
+                    <?php if ($error): ?>
+                        <div class="alert alert-danger alert-dismissible fade show rounded-3 text-center small" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> <?= htmlspecialchars($error) ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    <?php endif; ?>
 
-        <div class="footer-link">
-            Already have an account? <a href="login.php">Log In Here</a>
+                    <!-- Form -->
+                    <form method="POST" action="register.php" novalidate>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-secondary small">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-person"></i></span>
+                                <input type="text" name="username" class="form-control bg-light border-start-0 py-2" required placeholder="Choose a username" value="<?= htmlspecialchars($username) ?>">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-secondary small">Email Address</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-envelope"></i></span>
+                                <input type="email" name="email" class="form-control bg-light border-start-0 py-2" required placeholder="name@example.com" value="<?= htmlspecialchars($email) ?>">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-secondary small">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
+                                <input type="password" name="password" class="form-control bg-light border-start-0 py-2" required placeholder="Create a password">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-secondary small">Confirm Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-shield-lock"></i></span>
+                                <input type="password" name="confirm_password" class="form-control bg-light border-start-0 py-2" required placeholder="Repeat password">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg w-100 rounded-3 shadow-sm fw-bold mb-3">
+                            Complete Registration <i class="bi bi-check-lg ms-1"></i>
+                        </button>
+                    </form>
+
+                    <!-- Footer link -->
+                    <div class="text-center pt-2">
+                        <span class="text-muted small">Already have an account?</span>
+                        <a href="login.php" class="fw-bold text-primary text-decoration-none ms-1">Log In Here</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</body>
-</html>
+</div>
+
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -96,47 +96,43 @@ try {
         $stmt->execute(['admin', 'admin@foodorder.com', $adminPass, 'admin']);
     }
 
-    // Ensure sample categories exist
-    $pdo->exec("
-        INSERT INTO categories (id, name) VALUES 
-        (1, 'Burgers'),
-        (2, 'Pizzas'),
-        (3, 'Drinks'),
-        (4, 'Sides'),
-        (5, 'Desserts')
-        ON DUPLICATE KEY UPDATE name = VALUES(name)
-    ");
+    // Ensure sample categories exist if categories table is empty
+    $checkCat = $pdo->query("SELECT COUNT(*) FROM categories")->fetchColumn();
+    if ($checkCat == 0) {
+        $pdo->exec("
+            INSERT INTO categories (id, name) VALUES 
+            (1, 'Burgers'),
+            (2, 'Pizzas'),
+            (3, 'Drinks'),
+            (4, 'Sides'),
+            (5, 'Desserts')
+        ");
+    }
 
-    // Default sample menu items definition
-    $defaultMenuItems = [
-        ['id' => 1, 'category_id' => 1, 'name' => 'Classic Cheeseburger', 'price' => 89.99, 'description' => 'Juicy beef patty with cheddar cheese, lettuce, tomato, and secret sauce.', 'image_url' => 'uploads/cheeseburger.png'],
-        ['id' => 2, 'category_id' => 1, 'name' => 'Bacon BBQ Burger', 'price' => 89.99, 'description' => 'Crispy bacon, BBQ sauce, onion rings, and smoked cheddar.', 'image_url' => 'uploads/bacon_bbq_burger.png'],
-        ['id' => 3, 'category_id' => 2, 'name' => 'Margherita Pizza', 'price' => 89.99, 'description' => 'Fresh mozzarella, tomatoes, and basil on crispy crust.', 'image_url' => 'uploads/margherita_pizza.png'],
-        ['id' => 4, 'category_id' => 2, 'name' => 'Pepperoni Feast Pizza', 'price' => 89.99, 'description' => 'Loaded with spicy pepperoni and extra mozzarella.', 'image_url' => 'uploads/pepperoni_pizza.png'],
-        ['id' => 5, 'category_id' => 3, 'name' => 'Iced Lemon Tea', 'price' => 89.99, 'description' => 'Refreshing chilled lemon tea with fresh mint.', 'image_url' => 'uploads/iced_lemon_tea.png'],
-        ['id' => 6, 'category_id' => 3, 'name' => 'Chocolate Milkshake', 'price' => 89.99, 'description' => 'Rich and creamy chocolate milkshake topped with whip.', 'image_url' => 'uploads/chocolate_milkshake.png'],
-        ['id' => 7, 'category_id' => 4, 'name' => 'French Fries', 'price' => 49.99, 'description' => 'Crispy golden french fries salted to perfection, served hot with dipping ketchup.', 'image_url' => 'uploads/french_fries.png'],
-        ['id' => 8, 'category_id' => 4, 'name' => 'Chicken Nuggets', 'price' => 69.99, 'description' => 'Tender and juicy chicken nuggets served with signature honey mustard sauce.', 'image_url' => 'uploads/chicken_nuggets.png'],
-        ['id' => 9, 'category_id' => 3, 'name' => 'Soda', 'price' => 39.99, 'description' => 'Cold, ice-filled bubbly soda for maximum refreshment.', 'image_url' => 'uploads/soda.png'],
-        ['id' => 10, 'category_id' => 5, 'name' => 'Ice Cream', 'price' => 59.99, 'description' => 'Rich vanilla ice cream sundae topped with chocolate drizzle and cherry.', 'image_url' => 'uploads/ice_cream.png']
-    ];
+    // Default sample menu items definition - seed only if menu_items table is empty
+    $checkItems = $pdo->query("SELECT COUNT(*) FROM menu_items")->fetchColumn();
+    if ($checkItems == 0) {
+        $defaultMenuItems = [
+            ['id' => 1, 'category_id' => 1, 'name' => 'Classic Cheeseburger', 'price' => 89.99, 'description' => 'Juicy beef patty with cheddar cheese, lettuce, tomato, and secret sauce.', 'image_url' => 'uploads/cheeseburger.png'],
+            ['id' => 2, 'category_id' => 1, 'name' => 'Bacon BBQ Burger', 'price' => 89.99, 'description' => 'Crispy bacon, BBQ sauce, onion rings, and smoked cheddar.', 'image_url' => 'uploads/bacon_bbq_burger.png'],
+            ['id' => 3, 'category_id' => 2, 'name' => 'Margherita Pizza', 'price' => 89.99, 'description' => 'Fresh mozzarella, tomatoes, and basil on crispy crust.', 'image_url' => 'uploads/margherita_pizza.png'],
+            ['id' => 4, 'category_id' => 2, 'name' => 'Pepperoni Feast Pizza', 'price' => 89.99, 'description' => 'Loaded with spicy pepperoni and extra mozzarella.', 'image_url' => 'uploads/pepperoni_pizza.png'],
+            ['id' => 5, 'category_id' => 3, 'name' => 'Iced Lemon Tea', 'price' => 89.99, 'description' => 'Refreshing chilled lemon tea with fresh mint.', 'image_url' => 'uploads/iced_lemon_tea.png'],
+            ['id' => 6, 'category_id' => 3, 'name' => 'Chocolate Milkshake', 'price' => 89.99, 'description' => 'Rich and creamy chocolate milkshake topped with whip.', 'image_url' => 'uploads/chocolate_milkshake.png'],
+            ['id' => 7, 'category_id' => 4, 'name' => 'French Fries', 'price' => 49.99, 'description' => 'Crispy golden french fries salted to perfection, served hot with dipping ketchup.', 'image_url' => 'uploads/french_fries.png'],
+            ['id' => 8, 'category_id' => 4, 'name' => 'Chicken Nuggets', 'price' => 69.99, 'description' => 'Tender and juicy chicken nuggets served with signature honey mustard sauce.', 'image_url' => 'uploads/chicken_nuggets.png'],
+            ['id' => 9, 'category_id' => 3, 'name' => 'Soda', 'price' => 39.99, 'description' => 'Cold, ice-filled bubbly soda for maximum refreshment.', 'image_url' => 'uploads/soda.png'],
+            ['id' => 10, 'category_id' => 5, 'name' => 'Ice Cream', 'price' => 59.99, 'description' => 'Rich vanilla ice cream sundae topped with chocolate drizzle and cherry.', 'image_url' => 'uploads/ice_cream.png']
+        ];
 
-    $checkStmt = $pdo->prepare("SELECT id FROM menu_items WHERE name = ?");
-    $insertStmt = $pdo->prepare("INSERT INTO menu_items (id, category_id, name, price, description, image_url) VALUES (?, ?, ?, ?, ?, ?)");
-    $updateStmt = $pdo->prepare("UPDATE menu_items SET image_url = ?, price = ?, description = ? WHERE name = ? AND (image_url IS NULL OR image_url = '')");
-
-    foreach ($defaultMenuItems as $item) {
-        $checkStmt->execute([$item['name']]);
-        if ($checkStmt->fetchColumn() === false) {
+        $insertStmt = $pdo->prepare("INSERT INTO menu_items (id, category_id, name, price, description, image_url) VALUES (?, ?, ?, ?, ?, ?)");
+        foreach ($defaultMenuItems as $item) {
             try {
                 $insertStmt->execute([$item['id'], $item['category_id'], $item['name'], $item['price'], $item['description'], $item['image_url']]);
             } catch (Exception $e) {
-                // If ID auto increment collision happens, insert without explicit ID
                 $insertNoId = $pdo->prepare("INSERT INTO menu_items (category_id, name, price, description, image_url) VALUES (?, ?, ?, ?, ?)");
                 $insertNoId->execute([$item['category_id'], $item['name'], $item['price'], $item['description'], $item['image_url']]);
             }
-        } else {
-            $updateStmt->execute([$item['image_url'], $item['price'], $item['description'], $item['name']]);
         }
     }
 

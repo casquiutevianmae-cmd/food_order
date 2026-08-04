@@ -2,7 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config/db.php';
 
-// Authentication Guard: Must log in before accessing index dashboard
+// Authentication Guard: Must log in before accessing storefront
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login.php");
     exit;
@@ -22,341 +22,112 @@ if (isset($_POST['add_to_cart'])) {
     exit;
 }
 
+// Fetch categories for filter tabs
+$categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
+$selected_cat = (int)($_GET['category_id'] ?? 0);
+
 // Fetch items grouped by category
-$stmt = $pdo->query("SELECT m.*, c.name AS category FROM menu_items m JOIN categories c ON m.category_id = c.id ORDER BY c.name, m.name");
+if ($selected_cat > 0) {
+    $stmt = $pdo->prepare("SELECT m.*, c.name AS category FROM menu_items m JOIN categories c ON m.category_id = c.id WHERE m.category_id = ? ORDER BY m.name");
+    $stmt->execute([$selected_cat]);
+} else {
+    $stmt = $pdo->query("SELECT m.*, c.name AS category FROM menu_items m JOIN categories c ON m.category_id = c.id ORDER BY c.name, m.name");
+}
 $menu = $stmt->fetchAll();
 
-$cart_count = array_sum($_SESSION['cart']);
+$page_title = "Yum's berchg - Food Storefront";
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yum's berchg</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --success: #16a34a;
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
-        }
-
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            max-width: 1050px;
-            margin: auto;
-            padding: 20px;
-            background: var(--bg-color);
-            color: var(--text-main);
-        }
-
-        /* Top Navigation Header */
-        .nav-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #ffffff;
-            padding: 16px 24px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-            margin-bottom: 28px;
-            border: 1px solid var(--border-color);
-        }
-        .nav-bar h2 {
-            margin: 0;
-            font-size: 24px;
-            color: #0f172a;
-        }
-
-        /* Upper Right Side Navigation Controls (Cart & Logout side-by-side) */
-        .nav-right-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .btn-cart-nav {
-            background: #1e293b;
-            color: #ffffff;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: background 0.2s, transform 0.1s;
-        }
-        .btn-cart-nav:hover {
-            background: #0f172a;
-            transform: translateY(-1px);
-        }
-        .cart-count {
-            background: #2563eb;
-            color: #ffffff;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .btn-admin-nav {
-            background: #334155;
-            color: #ffffff;
-            padding: 8px 14px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-        .btn-admin-nav:hover {
-            background: #1e293b;
-        }
-
-        .btn-logout-nav {
-            background: #ef4444;
-            color: #ffffff;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-        .btn-logout-nav:hover {
-            background: #dc2626;
-        }
-
-        .section-title {
-            font-size: 20px;
-            margin-bottom: 20px;
-            color: #1e293b;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 8px;
-        }
-
-        /* Menu Grid */
-        .menu-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-            gap: 24px;
-        }
-
-        .menu-card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .menu-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
-        }
-
-        .image-container {
-            height: 190px;
-            width: 100%;
-            position: relative;
-            background: #f1f5f9;
-            overflow: hidden;
-        }
-        .image-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s ease;
-        }
-        .menu-card:hover .image-container img {
-            transform: scale(1.05);
-        }
-
-        .category-badge {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(4px);
-            color: #ffffff;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .card-body {
-            padding: 18px;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-        }
-        .card-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 8px;
-        }
-        .item-name {
-            font-size: 17px;
-            font-weight: 700;
-            margin: 0;
-            color: #0f172a;
-        }
-        .item-price {
-            font-size: 18px;
-            font-weight: 800;
-            color: var(--success);
-            white-space: nowrap;
-            margin-left: 10px;
-        }
-        .item-desc {
-            color: var(--text-muted);
-            font-size: 13px;
-            line-height: 1.5;
-            margin: 0 0 16px 0;
-            flex-grow: 1;
-        }
-
-        .add-cart-form {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-top: auto;
-        }
-        .qty-control {
-            display: flex;
-            align-items: center;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            overflow: hidden;
-            background: #f8fafc;
-            height: 38px;
-        }
-        .btn-qty-step {
-            background: #e2e8f0;
-            border: none;
-            width: 28px;
-            height: 100%;
-            font-size: 15px;
-            font-weight: 700;
-            color: #334155;
-            cursor: pointer;
-            transition: background 0.15s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            user-select: none;
-        }
-        .btn-qty-step:hover {
-            background: #cbd5e1;
-        }
-        .input-qty {
-            width: 36px;
-            height: 100%;
-            border: none;
-            text-align: center;
-            font-size: 14px;
-            font-weight: 700;
-            color: #0f172a;
-            background: transparent;
-            -moz-appearance: textfield;
-        }
-        .input-qty::-webkit-outer-spin-button,
-        .input-qty::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        .btn-add-cart {
-            flex-grow: 1;
-            height: 38px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            padding: 0 12px;
-            cursor: pointer;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-        .btn-add-cart:hover {
-            background: var(--primary-hover);
-        }
-    </style>
-</head>
-<body>
-
-    <!-- Header: Title on Left, Cart & Logout Side-by-Side on Upper Right Side -->
-    <div class="nav-bar">
-        <h2>🍔 Yum's berchg</h2>
-
-        <!-- Upper Right Side Controls -->
-        <div class="nav-right-group">
-            <a href="cart.php" class="btn-cart-nav">
-                🛒 <span>Cart</span>
-                <span class="cart-count"><?= $cart_count ?></span>
-            </a>
-
-            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                <a href="../auth/admin.php" class="btn-admin-nav">⚙️ Admin Panel</a>
-            <?php endif; ?>
-
-            <a href="../auth/logout.php" class="btn-logout-nav">Logout</a>
+<div class="container">
+    <!-- Hero Banner -->
+    <div class="bg-gradient bg-dark text-white rounded-4 p-4 p-md-5 mb-4 shadow-sm position-relative overflow-hidden">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <span class="badge bg-warning text-dark fw-bold mb-2">🔥 Fresh & Hot Delivered Fast</span>
+                <h1 class="display-5 fw-bold mb-2">Craving Something Delicious?</h1>
+                <p class="lead text-light mb-0">Browse our menu of burgers, pizzas, sides, drinks, and desserts!</p>
+            </div>
+            <div class="col-lg-4 text-center d-none d-lg-block">
+                <span class="display-1">🍔🍕🥤</span>
+            </div>
         </div>
     </div>
 
+    <!-- Added to Cart Alert -->
     <?php if (isset($_GET['added'])): ?>
         <?php $qty_added = (int)$_GET['added']; ?>
-        <div style="background: #dcfce7; border: 1px solid #bbf7d0; color: #15803d; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 600; font-size: 14px;">
-            ✅ Successfully added <?= $qty_added > 1 ? $qty_added . ' items' : '1 item' ?> to your cart! <a href="cart.php" style="color: #15803d; text-decoration: underline; margin-left: 10px;">Go to Cart & Checkout →</a>
+        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4 d-flex align-items-center justify-content-between" role="alert">
+            <div>
+                <i class="bi bi-check-circle-fill fs-5 me-2 align-middle"></i>
+                <strong>Added to Cart!</strong> Successfully added <?= $qty_added ?> <?= $qty_added > 1 ? 'items' : 'item' ?>.
+            </div>
+            <a href="cart.php" class="btn btn-sm btn-success rounded-pill px-3 ms-3">Go to Checkout <i class="bi bi-arrow-right"></i></a>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php endif; ?>
 
-    <h3 class="section-title">Delicious Menu Items</h3>
-
-    <div class="menu-grid">
-        <?php foreach ($menu as $item): ?>
-            <?php $img_src = !empty($item['image_url']) ? '../' . $item['image_url'] : '../uploads/default_food.png'; ?>
-            <div class="menu-card">
-                <div class="image-container">
-                    <img src="<?= htmlspecialchars($img_src) ?>" alt="<?= htmlspecialchars($item['name']) ?>">
-                    <span class="category-badge"><?= htmlspecialchars($item['category']) ?></span>
-                </div>
-                <div class="card-body">
-                    <div class="card-header-row">
-                        <h4 class="item-name"><?= htmlspecialchars($item['name']) ?></h4>
-                        <span class="item-price">₱<?= number_format($item['price'], 2) ?></span>
-                    </div>
-                    <p class="item-desc"><?= htmlspecialchars($item['description']) ?></p>
-                    <form method="POST" class="add-cart-form">
-                        <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
-                        <div class="qty-control">
-                            <button type="button" class="btn-qty-step" onclick="var i=this.nextElementSibling; if(i.value>1) i.value--;">-</button>
-                            <input type="number" name="quantity" value="1" min="1" max="99" class="input-qty" readonly>
-                            <button type="button" class="btn-qty-step" onclick="var i=this.previousElementSibling; if(i.value<99) i.value++;">+</button>
-                        </div>
-                        <button type="submit" name="add_to_cart" class="btn-add-cart">🛒 Add to Cart</button>
-                    </form>
-                </div>
-            </div>
-        <?php endforeach; ?>
+    <!-- Category Filter Pills -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h3 class="fw-bold mb-0 text-dark">Explore Our Menu</h3>
+        <div class="nav nav-pills gap-1">
+            <a class="nav-link rounded-pill px-3 <?= $selected_cat === 0 ? 'active' : 'bg-white border text-dark' ?>" href="index.php">All Items</a>
+            <?php foreach ($categories as $cat): ?>
+                <a class="nav-link rounded-pill px-3 <?= $selected_cat === $cat['id'] ? 'active' : 'bg-white border text-dark' ?>" href="index.php?category_id=<?= $cat['id'] ?>">
+                    <?= htmlspecialchars($cat['name']) ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
     </div>
 
-</body>
-</html>
+    <!-- Food Menu Grid -->
+    <?php if (empty($menu)): ?>
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center my-4">
+            <div class="fs-1 text-muted mb-2">🍽️</div>
+            <h4 class="fw-bold text-secondary">No Food Items Available</h4>
+            <p class="text-muted mb-0">Try selecting another category or check back later.</p>
+        </div>
+    <?php else: ?>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+            <?php foreach ($menu as $item): ?>
+                <?php $img_src = !empty($item['image_url']) ? '../' . $item['image_url'] : '../uploads/default_food.png'; ?>
+                <div class="col">
+                    <!-- Bootstrap Food Card -->
+                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden hover-shadow">
+                        <div class="food-card-img-wrapper">
+                            <img src="<?= htmlspecialchars($img_src) ?>" alt="<?= htmlspecialchars($item['name']) ?>">
+                            <span class="badge bg-dark bg-opacity-75 backdrop-blur position-absolute top-0 start-0 m-3 px-3 py-2 rounded-pill">
+                                <?= htmlspecialchars($item['category']) ?>
+                            </span>
+                        </div>
+                        <div class="card-body d-flex flex-column p-4">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title fw-bold text-dark mb-0"><?= htmlspecialchars($item['name']) ?></h5>
+                                <span class="fs-5 fw-extrabold text-success">₱<?= number_format($item['price'], 2) ?></span>
+                            </div>
+                            <p class="card-text text-muted small flex-grow-1 mb-3"><?= htmlspecialchars($item['description']) ?></p>
+                            
+                            <!-- Add to Cart Form -->
+                            <form method="POST" class="mt-auto">
+                                <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
+                                <div class="d-flex align-items-center gap-2">
+                                    <!-- Quantity Step Control -->
+                                    <div class="input-group qty-input-group">
+                                        <button class="btn btn-outline-secondary btn-sm" type="button" onclick="var input=this.nextElementSibling; if(input.value>1) input.value--;">-</button>
+                                        <input type="number" name="quantity" value="1" min="1" max="99" class="form-control form-control-sm text-center fw-bold bg-white" readonly>
+                                        <button class="btn btn-outline-secondary btn-sm" type="button" onclick="var input=this.previousElementSibling; if(input.value<99) input.value++;">+</button>
+                                    </div>
+                                    <button type="submit" name="add_to_cart" class="btn btn-primary rounded-3 flex-grow-1 fw-bold">
+                                        <i class="bi bi-cart-plus me-1"></i> Add
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>
+
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -49,303 +49,150 @@ $stmt_orders = $pdo->prepare("
 ");
 $stmt_orders->execute([$start_date, $end_date]);
 $orders = $stmt_orders->fetchAll();
+
+$page_title = "Sales Analytics & Reports - Yum's berchg";
+require_once __DIR__ . '/../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales & Revenue Reports - Admin Dashboard</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --success: #16a34a;
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
-        }
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-            max-width: 1150px;
-            margin: 0 auto;
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #ffffff;
-            padding: 16px 24px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-            margin-bottom: 25px;
-        }
-        header h1 {
-            margin: 0;
-            font-size: 22px;
-            color: #0f172a;
-        }
-        .nav-links {
-            display: flex;
-            gap: 10px;
-        }
-        .btn-nav {
-            padding: 8px 14px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 600;
-            background: #334155;
-            color: white;
-            transition: background 0.2s;
-        }
-        .btn-nav:hover { background: #1e293b; }
 
-        /* Filter Controls Form */
-        .filter-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
-            margin-bottom: 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        .filter-form {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #475569;
-        }
-        input[type="date"] {
-            padding: 8px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        .btn-filter {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 9px 16px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 13px;
-            cursor: pointer;
-        }
-        .btn-filter:hover { background: var(--primary-hover); }
-
-        .export-group {
-            display: flex;
-            gap: 10px;
-        }
-        .btn-export-pdf {
-            background: #dc2626;
-            color: white;
-            padding: 9px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: background 0.2s;
-        }
-        .btn-export-pdf:hover { background: #b91c1c; }
-        .btn-export-csv {
-            background: #16a34a;
-            color: white;
-            padding: 9px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: background 0.2s;
-        }
-        .btn-export-csv:hover { background: #15803d; }
-
-        /* KPI Stat Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 20px;
-            margin-bottom: 25px;
-        }
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
-        }
-        .stat-card .label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
-        .stat-card .value { font-size: 24px; font-weight: 800; margin: 8px 0 4px 0; }
-        .stat-card .subtext { font-size: 12px; color: #94a3b8; }
-
-        /* Table Styling */
-        .section-card {
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
-            margin-bottom: 25px;
-        }
-        .section-card h3 {
-            margin: 0 0 16px 0;
-            font-size: 18px;
-            color: #0f172a;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 12px 14px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 14px;
-        }
-        th { background: #f8fafc; color: #475569; font-weight: 600; }
-    </style>
-</head>
-<body>
-
-    <header>
-        <h1>📊 System Sales & Revenue Report Generator</h1>
-        <div class="nav-links">
-            <a href="../auth/admin.php" class="btn-nav">🛠️ Admin Dashboard</a>
-            <a href="../user/index.php" target="_blank" class="btn-nav">🌐 Customer Storefront</a>
+<div class="container-fluid px-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">📊 Sales & Revenue Analytics</h2>
+            <p class="text-muted small mb-0">Generate financial reports, view top products, and export data.</p>
         </div>
-    </header>
-
-    <!-- Filter Form & Export Buttons -->
-    <div class="filter-card">
-        <form method="GET" action="index.php" class="filter-form">
-            <div class="filter-group">
-                <label>From:</label>
-                <input type="date" name="start_date" value="<?= htmlspecialchars($start_date) ?>">
-            </div>
-            <div class="filter-group">
-                <label>To:</label>
-                <input type="date" name="end_date" value="<?= htmlspecialchars($end_date) ?>">
-            </div>
-            <button type="submit" class="btn-filter">🔍 Filter Report</button>
-        </form>
-
-        <div class="export-group">
-            <a href="generate_pdf.php?start_date=<?= urlencode($start_date) ?>&end_date=<?= urlencode($end_date) ?>" target="_blank" class="btn-export-pdf">
-                📄 Export PDF Form
+        <div>
+            <a href="../auth/admin.php" class="btn btn-outline-secondary rounded-pill btn-sm fw-semibold">
+                <i class="bi bi-speedometer2 me-1"></i> Admin Dashboard
             </a>
-            <a href="export_csv.php?start_date=<?= urlencode($start_date) ?>&end_date=<?= urlencode($end_date) ?>" class="btn-export-csv">
-                📊 Export CSV
-            </a>
+        </div>
+    </div>
+
+    <!-- Filter Form & Export Card -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-7">
+                <form method="GET" action="index.php" class="row align-items-center g-2">
+                    <div class="col-auto">
+                        <label class="col-form-label fw-bold small text-muted">From:</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="date" name="start_date" class="form-control" value="<?= htmlspecialchars($start_date) ?>">
+                    </div>
+                    <div class="col-auto">
+                        <label class="col-form-label fw-bold small text-muted">To:</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="date" name="end_date" class="form-control" value="<?= htmlspecialchars($end_date) ?>">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary fw-bold">
+                            <i class="bi bi-search me-1"></i> Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="col-lg-5 text-lg-end">
+                <div class="d-flex gap-2 justify-content-lg-end">
+                    <a href="generate_pdf.php?start_date=<?= urlencode($start_date) ?>&end_date=<?= urlencode($end_date) ?>" target="_blank" class="btn btn-danger rounded-pill fw-bold">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF Report
+                    </a>
+                    <a href="export_csv.php?start_date=<?= urlencode($start_date) ?>&end_date=<?= urlencode($end_date) ?>" class="btn btn-success rounded-pill fw-bold">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- KPI Summary Metrics -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="label">Total Revenue</div>
-            <div class="value" style="color: var(--success);">₱<?= number_format($summary['total_revenue'], 2) ?></div>
-            <div class="subtext">Period total sales</div>
+    <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+        <div class="col">
+            <div class="card kpi-card kpi-success shadow-sm p-4 h-100">
+                <span class="text-uppercase text-muted extra-small fw-bold">Period Total Revenue</span>
+                <div class="fs-2 fw-extrabold text-success my-1">₱<?= number_format($summary['total_revenue'], 2) ?></div>
+                <span class="text-muted small">Gross sales revenue</span>
+            </div>
         </div>
-        <div class="stat-card">
-            <div class="label">Total Orders Placed</div>
-            <div class="value" style="color: var(--primary);"><?= number_format($summary['total_orders']) ?></div>
-            <div class="subtext">Completed order count</div>
+        <div class="col">
+            <div class="card kpi-card shadow-sm p-4 h-100">
+                <span class="text-uppercase text-muted extra-small fw-bold">Completed Orders</span>
+                <div class="fs-2 fw-extrabold text-primary my-1"><?= number_format($summary['total_orders']) ?></div>
+                <span class="text-muted small">Total completed transactions</span>
+            </div>
         </div>
-        <div class="stat-card">
-            <div class="label">Average Order Value</div>
-            <div class="value" style="color: #0284c7;">₱<?= number_format($summary['avg_order_value'], 2) ?></div>
-            <div class="subtext">Per order average</div>
+        <div class="col">
+            <div class="card kpi-card kpi-info shadow-sm p-4 h-100">
+                <span class="text-uppercase text-muted extra-small fw-bold">Average Order Value</span>
+                <div class="fs-2 fw-extrabold text-info my-1">₱<?= number_format($summary['avg_order_value'], 2) ?></div>
+                <span class="text-muted small">Average revenue per order</span>
+            </div>
         </div>
     </div>
 
-    <!-- Top Selling Items -->
-    <div class="section-card">
-        <h3>🔥 Top Selling Menu Items</h3>
+    <!-- Top Selling Products Table -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-fire text-danger me-2"></i>Top Selling Menu Items</h5>
         <?php if (empty($top_items)): ?>
-            <p style="color: var(--text-muted); font-size: 14px;">No items sold in the selected date range.</p>
+            <p class="text-muted mb-0">No items sold during the selected date range.</p>
         <?php else: ?>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Item Name</th>
-                        <th>Units Sold</th>
-                        <th>Total Revenue</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($top_items as $item): ?>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <td><strong><?= htmlspecialchars($item['name']) ?></strong></td>
-                            <td><?= number_format($item['total_qty']) ?> pcs</td>
-                            <td style="font-weight: 700; color: var(--success);">₱<?= number_format($item['total_sales'], 2) ?></td>
+                            <th>Item Name</th>
+                            <th>Units Sold</th>
+                            <th>Total Revenue Generated</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($top_items as $item): ?>
+                            <tr>
+                                <td class="fw-bold text-dark"><?= htmlspecialchars($item['name']) ?></td>
+                                <td><?= number_format($item['total_qty']) ?> pcs</td>
+                                <td class="text-success fw-bold">₱<?= number_format($item['total_sales'], 2) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         <?php endif; ?>
     </div>
 
-    <!-- Detailed Orders Table -->
-    <div class="section-card">
-        <h3>📋 Detailed Transaction Log (<?= count($orders) ?> Orders)</h3>
+    <!-- Detailed Transactions Ledger Table -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-5">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-receipt text-primary me-2"></i>Detailed Transaction Ledger (<?= count($orders) ?> Orders)</h5>
         <?php if (empty($orders)): ?>
-            <p style="color: var(--text-muted); font-size: 14px;">No transactions recorded for this period.</p>
+            <p class="text-muted mb-0">No orders recorded for this period.</p>
         <?php else: ?>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Order #</th>
-                        <th>Customer Name</th>
-                        <th>Phone</th>
-                        <th>Address</th>
-                        <th>Date & Time</th>
-                        <th>Total Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($orders as $order): ?>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <td>#<?= $order['id'] ?></td>
-                            <td><strong><?= htmlspecialchars($order['customer_name']) ?></strong></td>
-                            <td><?= htmlspecialchars($order['phone']) ?></td>
-                            <td><?= htmlspecialchars($order['address']) ?></td>
-                            <td><?= htmlspecialchars($order['created_at']) ?></td>
-                            <td style="font-weight: 700; color: var(--success);">₱<?= number_format($order['total_price'], 2) ?></td>
+                            <th>Order #</th>
+                            <th>Customer Name</th>
+                            <th>Phone</th>
+                            <th>Address</th>
+                            <th>Date & Time</th>
+                            <th>Total Amount</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($orders as $order): ?>
+                            <tr>
+                                <td class="fw-bold">#<?= $order['id'] ?></td>
+                                <td class="fw-bold"><?= htmlspecialchars($order['customer_name']) ?></td>
+                                <td><?= htmlspecialchars($order['phone']) ?></td>
+                                <td class="small" style="max-width: 250px;"><?= htmlspecialchars($order['address']) ?></td>
+                                <td class="text-muted small"><?= htmlspecialchars($order['created_at']) ?></td>
+                                <td class="text-success fw-bold">₱<?= number_format($order['total_price'], 2) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         <?php endif; ?>
     </div>
+</div>
 
-</body>
-</html>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

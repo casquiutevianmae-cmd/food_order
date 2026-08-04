@@ -7,13 +7,11 @@ $order = null;
 $order_items = [];
 
 if ($order_id > 0) {
-    // Fetch order from XAMPP MySQL database
     $stmt = $pdo->prepare("SELECT * FROM orders WHERE id = ?");
     $stmt->execute([$order_id]);
     $order = $stmt->fetch();
 
     if ($order) {
-        // Fetch order items from XAMPP MySQL database
         $stmt_items = $pdo->prepare("
             SELECT oi.*, m.name AS item_name 
             FROM order_items oi 
@@ -24,171 +22,86 @@ if ($order_id > 0) {
         $order_items = $stmt_items->fetchAll();
     }
 }
+
+$page_title = "Order Receipt #" . $order_id . " - Yum's berchg";
+require_once __DIR__ . '/../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Receipt #<?= htmlspecialchars($order_id) ?> - Yum's berchg</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <style>
-        :root {
-            --primary: #2563eb;
-            --success: #16a34a;
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
-        }
 
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-color);
-            color: var(--text-main);
-            padding: 40px 20px;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <!-- Receipt Card -->
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="card-body p-4 p-sm-5">
+                    <div class="text-center mb-4">
+                        <span class="display-1 text-success d-block mb-2">🎉</span>
+                        <h2 class="fw-bold text-success mb-1">Order Confirmed!</h2>
+                        <p class="text-muted small">Thank you! Your order has been placed successfully.</p>
+                    </div>
 
-        .receipt-card {
-            background: var(--card-bg);
-            max-width: 520px;
-            width: 100%;
-            padding: 35px 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-            border: 1px solid var(--border-color);
-        }
+                    <?php if ($order): ?>
+                        <!-- Order Metadata Box -->
+                        <div class="bg-light rounded-3 p-3 mb-4 text-start small">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Order Number:</span>
+                                <strong class="text-dark">#<?= htmlspecialchars($order['id']) ?></strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Customer Name:</span>
+                                <strong class="text-dark"><?= htmlspecialchars($order['customer_name']) ?></strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Phone Number:</span>
+                                <strong class="text-dark"><?= htmlspecialchars($order['phone']) ?></strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Delivery Address:</span>
+                                <strong class="text-dark text-end ms-2"><?= htmlspecialchars($order['address']) ?></strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Order Date:</span>
+                                <strong class="text-dark"><?= htmlspecialchars($order['created_at']) ?></strong>
+                            </div>
+                        </div>
 
-        .success-icon {
-            text-align: center;
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        h1 {
-            text-align: center;
-            margin: 0 0 5px 0;
-            color: var(--success);
-            font-size: 24px;
-        }
-        .subtitle {
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 14px;
-            margin-bottom: 25px;
-        }
+                        <!-- Itemized Table -->
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered align-middle small mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Item</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($order_items as $item): ?>
+                                        <tr>
+                                            <td class="fw-bold"><?= htmlspecialchars($item['item_name'] ?? 'Item') ?></td>
+                                            <td class="text-center"><?= $item['quantity'] ?></td>
+                                            <td class="text-end fw-semibold">₱<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
 
-        .receipt-details {
-            background: #f8fafc;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 20px;
-            font-size: 13px;
-        }
-        .receipt-details div {
-            margin-bottom: 6px;
-        }
-        .receipt-details div:last-child {
-            margin-bottom: 0;
-        }
+                        <!-- Grand Total -->
+                        <div class="d-flex justify-content-between align-items-center bg-success bg-opacity-10 p-3 rounded-3 mb-4">
+                            <span class="fw-bold text-success">Grand Total Paid:</span>
+                            <span class="fs-3 fw-extrabold text-success">₱<?= number_format($order['total_price'], 2) ?></span>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning text-center">Order details not found.</div>
+                    <?php endif; ?>
 
-        .items-list {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        .items-list th, .items-list td {
-            padding: 10px;
-            border-bottom: 1px solid var(--border-color);
-            text-align: left;
-        }
-        .items-list th {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 18px;
-            font-weight: 800;
-            padding: 12px 0;
-            border-top: 2px solid var(--border-color);
-            color: var(--success);
-            margin-bottom: 25px;
-        }
-
-        .btn-home {
-            display: block;
-            width: 100%;
-            text-align: center;
-            background: var(--primary);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 15px;
-            transition: background 0.2s;
-        }
-        .btn-home:hover {
-            background: #1d4ed8;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="receipt-card">
-        <div class="success-icon">🎉</div>
-        <h1>Order Confirmed!</h1>
-        <p class="subtitle">Your order has been received and is being prepared.</p>
-
-        <?php if ($order): ?>
-            <div class="receipt-details">
-                <div><strong>Order #:</strong> #<?= htmlspecialchars($order['id']) ?></div>
-                <div><strong>Customer Name:</strong> <?= htmlspecialchars($order['customer_name']) ?></div>
-                <div><strong>Contact Number:</strong> <?= htmlspecialchars($order['phone']) ?></div>
-                <div><strong>Delivery Address:</strong> <?= htmlspecialchars($order['address']) ?></div>
-                <div><strong>Order Date:</strong> <?= htmlspecialchars($order['created_at']) ?></div>
+                    <a href="index.php" class="btn btn-primary btn-lg w-100 rounded-3 fw-bold">
+                        <i class="bi bi-shop me-1"></i> Back to Menu
+                    </a>
+                </div>
             </div>
-
-            <table class="items-list">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th>Qty</th>
-                        <th>Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($order_items as $item): ?>
-                        <tr>
-                            <td><strong><?= htmlspecialchars($item['item_name'] ?? 'Item') ?></strong></td>
-                            <td><?= $item['quantity'] ?></td>
-                            <td style="font-weight: 600;">₱<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-
-            <div class="total-row">
-                <span>Grand Total Paid:</span>
-                <span>₱<?= number_format($order['total_price'], 2) ?></span>
-            </div>
-        <?php else: ?>
-            <p style="text-align: center; color: var(--text-muted);">Order information not found.</p>
-        <?php endif; ?>
-
-        <a href="index.php" class="btn-home">🍔 Back to Yum's berchg Menu</a>
+        </div>
     </div>
+</div>
 
-</body>
-</html>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
