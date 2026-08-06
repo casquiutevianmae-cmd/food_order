@@ -7,7 +7,7 @@ $page_title = $page_title ?? "Yum's berchg - Food Ordering System";
 $cart_count = isset($_SESSION['cart']) ? array_sum($_SESSION['cart']) : 0;
 
 // Determine base URL path depth relative to current script
-$is_subfolder = (strpos($_SERVER['SCRIPT_NAME'], '/auth/') !== false || strpos($_SERVER['SCRIPT_NAME'], '/user/') !== false || strpos($_SERVER['SCRIPT_NAME'], '/reports/') !== false);
+$is_subfolder = (strpos($_SERVER['SCRIPT_NAME'], '/auth/') !== false || strpos($_SERVER['SCRIPT_NAME'], '/user/') !== false || strpos($_SERVER['SCRIPT_NAME'], '/reports/') !== false || strpos($_SERVER['SCRIPT_NAME'], '/inventory/') !== false);
 $base_path = $is_subfolder ? '../' : './';
 ?>
 <!DOCTYPE html>
@@ -55,6 +55,11 @@ $base_path = $is_subfolder ? '../' : './';
                     <li class="nav-item ms-lg-2">
                         <a class="btn btn-outline-warning btn-sm me-2" href="<?= $base_path ?>auth/admin.php">
                             <i class="bi bi-speedometer2 me-1"></i> Admin Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-outline-success btn-sm me-2" href="<?= $base_path ?>inventory/index.php">
+                            <i class="bi bi-boxes me-1"></i> Inventory
                         </a>
                     </li>
                     <li class="nav-item">

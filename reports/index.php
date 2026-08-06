@@ -50,6 +50,9 @@ $stmt_orders = $pdo->prepare("
 $stmt_orders->execute([$start_date, $end_date]);
 $orders = $stmt_orders->fetchAll();
 
+// 4. Fetch Low Stock Inventory Count
+$low_stock_items_count = (int)$pdo->query("SELECT COUNT(*) FROM menu_items WHERE stock_quantity < 10")->fetchColumn();
+
 $page_title = "Sales Analytics & Reports - Yum's berchg";
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -61,7 +64,15 @@ require_once __DIR__ . '/../includes/header.php';
             <h2 class="fw-bold text-dark mb-1">📊 Sales & Revenue Analytics</h2>
             <p class="text-muted small mb-0">Generate financial reports, view top products, and export data.</p>
         </div>
-        <div>
+        <div class="d-flex gap-2">
+            <a href="../inventory/index.php" class="btn btn-outline-success rounded-pill btn-sm fw-semibold position-relative">
+                <i class="bi bi-boxes me-1"></i> Product Inventory
+                <?php if ($low_stock_items_count > 0): ?>
+                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" title="<?= $low_stock_items_count ?> items low in stock">
+                        <span class="visually-hidden">Low stock alerts</span>
+                    </span>
+                <?php endif; ?>
+            </a>
             <a href="../auth/admin.php" class="btn btn-outline-secondary rounded-pill btn-sm fw-semibold">
                 <i class="bi bi-speedometer2 me-1"></i> Admin Dashboard
             </a>

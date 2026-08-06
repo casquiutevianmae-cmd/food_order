@@ -40,11 +40,12 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_menu_item') {
     $price       = (float)($_POST['price'] ?? 0);
     $description = trim($_POST['description'] ?? '');
     $image_url   = trim($_POST['image_url'] ?? '');
+    $stock       = max(0, (int)($_POST['stock_quantity'] ?? 50));
 
     if (!empty($name) && $category_id > 0 && $price > 0) {
-        $stmt = $pdo->prepare("INSERT INTO menu_items (category_id, name, price, description, image_url) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$category_id, $name, $price, $description, $image_url]);
-        $success_msg = "Menu item '{$name}' added successfully!";
+        $stmt = $pdo->prepare("INSERT INTO menu_items (category_id, name, price, description, image_url, stock_quantity) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$category_id, $name, $price, $description, $image_url, $stock]);
+        $success_msg = "Menu item '{$name}' with {$stock} initial stock added successfully!";
     } else {
         $error_msg = "Please provide valid menu item details (Name, Category, and positive Price).";
     }
@@ -58,10 +59,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'edit_menu_item') {
     $price       = (float)($_POST['price'] ?? 0);
     $description = trim($_POST['description'] ?? '');
     $image_url   = trim($_POST['image_url'] ?? '');
+    $stock       = max(0, (int)($_POST['stock_quantity'] ?? 0));
 
     if ($item_id > 0 && !empty($name) && $category_id > 0 && $price > 0) {
-        $stmt = $pdo->prepare("UPDATE menu_items SET category_id = ?, name = ?, price = ?, description = ?, image_url = ? WHERE id = ?");
-        $stmt->execute([$category_id, $name, $price, $description, $image_url, $item_id]);
+        $stmt = $pdo->prepare("UPDATE menu_items SET category_id = ?, name = ?, price = ?, description = ?, image_url = ?, stock_quantity = ? WHERE id = ?");
+        $stmt->execute([$category_id, $name, $price, $description, $image_url, $stock, $item_id]);
         $success_msg = "Menu item '{$name}' updated successfully!";
     } else {
         $error_msg = "Failed to update menu item. Please check inputs.";
@@ -472,6 +474,19 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                     </div>
 
+                    <div class="mb-3 bg-light p-3 rounded-3 border">
+                        <label class="form-label fw-semibold small text-dark d-flex justify-content-between">
+                            <span>Stock Quantity</span>
+                            <?php if ($edit_item): ?>
+                                <span class="text-muted">Current: <?= (int)$edit_item['stock_quantity'] ?> units</span>
+                            <?php endif; ?>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-boxes"></i></span>
+                            <input type="number" name="stock_quantity" class="form-control fw-bold" min="0" placeholder="50" value="<?= htmlspecialchars($edit_item['stock_quantity'] ?? '50') ?>" required>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-semibold small">Description</label>
                         <textarea name="description" class="form-control" rows="2" placeholder="Brief description of food item..."><?= htmlspecialchars($edit_item['description'] ?? '') ?></textarea>
@@ -492,7 +507,12 @@ require_once __DIR__ . '/../includes/header.php';
 
     <!-- 6. MENU ITEMS CATALOG TABLE -->
     <div class="card border-0 shadow-sm rounded-4 p-4 mb-5">
-        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-menu-app text-dark me-2"></i>Menu Items Catalog</h5>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-menu-app text-dark me-2"></i>Menu Items Catalog</h5>
+            <a href="../inventory/index.php" class="btn btn-outline-success btn-sm rounded-pill fw-bold">
+                <i class="bi bi-boxes me-1"></i> Open Full Inventory Manager
+            </a>
+        </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -501,13 +521,24 @@ require_once __DIR__ . '/../includes/header.php';
                         <th>Item</th>
                         <th>Category</th>
                         <th>Price</th>
+                        <th>Stock Level</th>
                         <th>Description</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($menu_items as $item): ?>
-                        <?php $img_path = !empty($item['image_url']) ? '../' . $item['image_url'] : '../uploads/default_food.png'; ?>
+                        <?php 
+                            $img_path = !empty($item['image_url']) ? '../' . $item['image_url'] : '../uploads/default_food.png'; 
+                            $stk = (int)($item['stock_quantity'] ?? 0);
+                            if ($stk <= 0) {
+                                $stk_badge = '<span class="badge bg-danger">Out of Stock (0)</span>';
+                            } elseif ($stk < 10) {
+                                $stk_badge = '<span class="badge bg-warning text-dark">Low Stock (' . $stk . ')</span>';
+                            } else {
+                                $stk_badge = '<span class="badge bg-success">In Stock (' . $stk . ')</span>';
+                            }
+                        ?>
                         <tr>
                             <td>
                                 <img src="<?= htmlspecialchars($img_path) ?>" alt="Food" class="img-thumbnail rounded-3" style="width: 50px; height: 50px; object-fit: cover;">
@@ -515,6 +546,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <td class="fw-bold"><?= htmlspecialchars($item['name']) ?></td>
                             <td><span class="badge bg-dark rounded-pill"><?= htmlspecialchars($item['category_name']) ?></span></td>
                             <td class="text-success fw-bold">₱<?= number_format($item['price'], 2) ?></td>
+                            <td><?= $stk_badge ?></td>
                             <td class="text-muted small" style="max-width: 250px;"><?= htmlspecialchars($item['description']) ?></td>
                             <td class="text-end">
                                 <a href="admin.php?edit_item_id=<?= $item['id'] ?>" class="btn btn-outline-primary btn-sm rounded-pill me-1">

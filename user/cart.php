@@ -13,9 +13,22 @@ if (isset($_POST['update_qty'])) {
     $item_id = (int) $_POST['item_id'];
     $change = (int) $_POST['change'];
     if (isset($_SESSION['cart'][$item_id])) {
-        $_SESSION['cart'][$item_id] += $change;
-        if ($_SESSION['cart'][$item_id] <= 0) {
-            unset($_SESSION['cart'][$item_id]);
+        if ($change > 0) {
+            // Check available stock in database
+            $stmt_stk = $pdo->prepare("SELECT stock_quantity FROM menu_items WHERE id = ?");
+            $stmt_stk->execute([$item_id]);
+            $stk = (int)$stmt_stk->fetchColumn();
+            if (($_SESSION['cart'][$item_id] + $change) <= $stk) {
+                $_SESSION['cart'][$item_id] += $change;
+            } else {
+                header("Location: cart.php?stock_exceeded=1");
+                exit;
+            }
+        } else {
+            $_SESSION['cart'][$item_id] += $change;
+            if ($_SESSION['cart'][$item_id] <= 0) {
+                unset($_SESSION['cart'][$item_id]);
+            }
         }
     }
     header("Location: cart.php");
@@ -34,6 +47,10 @@ $cart = $_SESSION['cart'] ?? [];
 $cart_items = [];
 $error = '';
 
+if (isset($_GET['stock_exceeded'])) {
+    $error = "Cannot add more units. You have reached the maximum available inventory stock for that product.";
+}
+
 if (!empty($cart)) {
     $placeholders = implode(',', array_fill(0, count($cart), '?'));
     $stmt = $pdo->prepare("SELECT * FROM menu_items WHERE id IN ($placeholders)");
@@ -44,7 +61,7 @@ if (!empty($cart)) {
 // Pre-fill customer name if logged in
 $logged_in_name = $_SESSION['username'] ?? '';
 
-// Handle Place Order action
+// Handle Place Order action with Inventory Stock Check & Deduct Transaction
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
     if (empty($cart_items)) {
         $error = "Your cart is empty. Please add menu items before placing an order.";
@@ -57,31 +74,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         if (empty($name) || empty($phone) || empty($address)) {
             $error = "Please fill in all delivery details (Name, Phone, and Address).";
         } else {
-            // 1. Calculate grand total
-            $grand_total = 0;
-            foreach ($cart_items as $item) {
-                $qty = $_SESSION['cart'][$item['id']] ?? 0;
-                $grand_total += $item['price'] * $qty;
-            }
+            try {
+                // Start MySQL Transaction
+                $pdo->beginTransaction();
 
-            // 2. Insert order record
-            $stmt = $pdo->prepare("INSERT INTO orders (customer_name, phone, address, total_price, user_id) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $phone, $address, $grand_total, $user_id]);
-            $order_id = $pdo->lastInsertId();
+                // 1. Check stock availability for all cart items
+                $stock_errors = [];
+                foreach ($cart_items as $item) {
+                    $requested_qty = $_SESSION['cart'][$item['id']] ?? 0;
+                    if ($requested_qty > 0) {
+                        $stmt_chk = $pdo->prepare("SELECT stock_quantity FROM menu_items WHERE id = ? FOR UPDATE");
+                        $stmt_chk->execute([$item['id']]);
+                        $current_stock = (int)$stmt_chk->fetchColumn();
 
-            // 3. Insert individual order items
-            $stmt_item = $pdo->prepare("INSERT INTO order_items (order_id, item_id, quantity, price) VALUES (?, ?, ?, ?)");
-            foreach ($cart_items as $item) {
-                $qty = $_SESSION['cart'][$item['id']] ?? 0;
-                if ($qty > 0) {
-                    $stmt_item->execute([$order_id, $item['id'], $qty, $item['price']]);
+                        if ($requested_qty > $current_stock) {
+                            $stock_errors[] = "'{$item['name']}' has only {$current_stock} item(s) left in inventory.";
+                        }
+                    }
                 }
-            }
 
-            // 4. Clear cart and redirect
-            $_SESSION['cart'] = [];
-            header("Location: success.php?order_id=" . $order_id);
-            exit;
+                if (!empty($stock_errors)) {
+                    $pdo->rollBack();
+                    $error = "Insufficient Inventory Stock: " . implode(" ", $stock_errors);
+                } else {
+                    // 2. Calculate grand total
+                    $grand_total = 0;
+                    foreach ($cart_items as $item) {
+                        $qty = $_SESSION['cart'][$item['id']] ?? 0;
+                        $grand_total += $item['price'] * $qty;
+                    }
+
+                    // 3. Insert order record
+                    $stmt = $pdo->prepare("INSERT INTO orders (customer_name, phone, address, total_price, user_id) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([$name, $phone, $address, $grand_total, $user_id]);
+                    $order_id = $pdo->lastInsertId();
+
+                    // 4. Insert individual order items & DECREMENT STOCK
+                    $stmt_item = $pdo->prepare("INSERT INTO order_items (order_id, item_id, quantity, price) VALUES (?, ?, ?, ?)");
+                    $stmt_deduct = $pdo->prepare("UPDATE menu_items SET stock_quantity = stock_quantity - ? WHERE id = ?");
+
+                    foreach ($cart_items as $item) {
+                        $qty = $_SESSION['cart'][$item['id']] ?? 0;
+                        if ($qty > 0) {
+                            $stmt_item->execute([$order_id, $item['id'], $qty, $item['price']]);
+                            $stmt_deduct->execute([$qty, $item['id']]);
+                        }
+                    }
+
+                    // Commit transaction
+                    $pdo->commit();
+
+                    // Clear cart and redirect
+                    $_SESSION['cart'] = [];
+                    header("Location: success.php?order_id=" . $order_id);
+                    exit;
+                }
+            } catch (Exception $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $error = "Failed to process order: " . $e->getMessage();
+            }
         }
     }
 }
@@ -144,9 +197,11 @@ require_once __DIR__ . '/../includes/header.php';
                                     $subtotal = $item['price'] * $qty;
                                     $grand_total += $subtotal;
                                     ?>
+                                    <?php $avail_stk = (int)($item['stock_quantity'] ?? 0); ?>
                                     <tr>
                                         <td>
-                                            <span class="fw-bold text-dark"><?= htmlspecialchars($item['name']) ?></span>
+                                            <span class="fw-bold text-dark d-block"><?= htmlspecialchars($item['name']) ?></span>
+                                            <span class="small text-muted">Available stock: <?= $avail_stk ?></span>
                                         </td>
                                         <td>₱<?= number_format($item['price'], 2) ?></td>
                                         <td>
@@ -160,7 +215,7 @@ require_once __DIR__ . '/../includes/header.php';
                                                 <form method="POST" class="d-inline">
                                                     <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
                                                     <input type="hidden" name="change" value="1">
-                                                    <button type="submit" name="update_qty" class="btn btn-outline-secondary btn-sm rounded-circle px-2 py-0">+</button>
+                                                    <button type="submit" name="update_qty" class="btn btn-outline-secondary btn-sm rounded-circle px-2 py-0" <?= $qty >= $avail_stk ? 'disabled title="Maximum stock limit reached"' : '' ?>>+</button>
                                                 </form>
                                             </div>
                                         </td>

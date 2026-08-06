@@ -44,6 +44,7 @@ try {
             price DECIMAL(10,2) NOT NULL,
             description TEXT,
             image_url VARCHAR(255) DEFAULT NULL,
+            stock_quantity INT NOT NULL DEFAULT 50,
             FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
@@ -51,6 +52,13 @@ try {
     // Add image_url column if table already exists without it
     try {
         $pdo->exec("ALTER TABLE menu_items ADD COLUMN image_url VARCHAR(255) DEFAULT NULL");
+    } catch (Exception $e) {
+        // Column already exists
+    }
+
+    // Add stock_quantity column if table already exists without it
+    try {
+        $pdo->exec("ALTER TABLE menu_items ADD COLUMN stock_quantity INT NOT NULL DEFAULT 50");
     } catch (Exception $e) {
         // Column already exists
     }
