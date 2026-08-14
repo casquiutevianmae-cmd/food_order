@@ -1,0 +1,23 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Log files
+*.log
+
+# Node dependencies
+node_modules/
+
+# Generated report exports
+reports/*.pdf
+reports/*.csv
+!reports/export_csv.php
+!reports/generate_pdf.php
+!reports/index.php

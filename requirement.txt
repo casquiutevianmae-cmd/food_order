@@ -1,0 +1,33 @@
+# ========================================================================
+# FOOD ORDERING MANAGEMENT SYSTEM (YUM'S BERCHG) - SYSTEM REQUIREMENTS
+# ========================================================================
+
+# 1. CORE SERVER & RUNTIME ENVIRONMENT
+# ------------------------------------------------------------------------
+Apache >= 2.4.0                 # Web Server (XAMPP / WAMP / LAMP compatible)
+PHP >= 7.4.0                    # PHP Runtime Engine (PHP 8.x recommended)
+MySQL >= 5.7.0                  # Relational Database Management System (or MariaDB >= 10.4)
+Node.js >= 18.0.0               # Node.js JavaScript Runtime (for optional npm package management)
+npm >= 9.0.0                    # Node Package Manager
+
+# 2. REQUIRED PHP EXTENSIONS
+# ------------------------------------------------------------------------
+ext-pdo                         # PHP Data Objects core interface
+ext-pdo_mysql                   # PDO MySQL Driver extension for database connectivity
+ext-json                        # Native JSON encoding & decoding support
+ext-mbstring                    # Multibyte string support
+ext-gd                          # GD Graphics Library (optional, for image processing)
+
+# 3. FRONTEND FRAMEWORKS & CDN DEPENDENCIES
+# ------------------------------------------------------------------------
+Bootstrap == 5.3.3              # CSS Framework (loaded via jsDelivr CDN)
+Bootstrap-Icons == 1.11.3       # Vector icon library
+Google-Fonts-Outfit            # Typography font family
+Google-Fonts-Plus-Jakarta-Sans # Body typography font family
+
+# 4. DATABASE INITIALIZATION
+# ------------------------------------------------------------------------
+Database-Name: food_db
+Auto-Migration-Script: config/db.php
+Schema-SQL-File: config/schema.sql
+Default-Admin-Credentials: admin / admin123

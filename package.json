@@ -1,0 +1,13 @@
+{
+  "name": "food_order",
+  "version": "1.0.0",
+  "description": "A full-featured, responsive PHP & MySQL web application designed for food establishments, restaurants, and eateries. Features a customer storefront for online ordering and a comprehensive admin management panel with PDF/CSV revenue reporting.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
